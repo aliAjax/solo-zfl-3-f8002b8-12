@@ -19,6 +19,7 @@ import {
   NOISE_LABELS,
   STAY_DURATION_LABELS,
   TIME_PERIOD_LABELS,
+  DEFAULT_BENCH_CAPACITY,
 } from '@/types';
 import type {
   MaterialType,
@@ -40,22 +41,44 @@ export default function AddEditPage() {
   const { getBenchById, addBench, updateBench, initialize, initialized, addExperience, updateExperience, deleteExperience } = useBenchStore();
   const existingBench = id ? getBenchById(id) : undefined;
 
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<{
+    name: string;
+    location: string;
+    lat: number;
+    lng: number;
+    material: MaterialType;
+    orientation: OrientationType;
+    hasBackrest: boolean;
+    shadeLevel: ShadeLevelType;
+    noiseLevel: NoiseLevelType;
+    stayDuration: StayDurationType;
+    rating: number;
+    review: string;
+    seats: number | '';
+    arrivalsPerHour: number | '';
+    avgStayMinutes: number | '';
+    maxQueue: number | '';
+  }>({
     name: '',
     location: '',
     lat: 31.23,
     lng: 121.47,
-    material: 'wood' as MaterialType,
-    orientation: 'south' as OrientationType,
+    material: 'wood',
+    orientation: 'south',
     hasBackrest: true,
-    shadeLevel: 'partial' as ShadeLevelType,
-    noiseLevel: 'moderate' as NoiseLevelType,
-    stayDuration: 'medium' as StayDurationType,
+    shadeLevel: 'partial',
+    noiseLevel: 'moderate',
+    stayDuration: 'medium',
     rating: 3,
     review: '',
+    seats: DEFAULT_BENCH_CAPACITY.seats,
+    arrivalsPerHour: DEFAULT_BENCH_CAPACITY.arrivalsPerHour,
+    avgStayMinutes: DEFAULT_BENCH_CAPACITY.avgStayMinutes,
+    maxQueue: DEFAULT_BENCH_CAPACITY.maxQueue,
   });
 
   const [experiences, setExperiences] = useState<BenchExperience[]>([]);
+  const [capacityErrors, setCapacityErrors] = useState<Record<string, string>>({});
 
   useEffect(() => {
     if (!initialized) {
@@ -78,6 +101,11 @@ export default function AddEditPage() {
         stayDuration: existingBench.stayDuration,
         rating: existingBench.rating,
         review: existingBench.review,
+        // 旧档案缺字段时 store 已补默认登记值
+        seats: existingBench.seats,
+        arrivalsPerHour: existingBench.arrivalsPerHour,
+        avgStayMinutes: existingBench.avgStayMinutes,
+        maxQueue: existingBench.maxQueue,
       });
       setExperiences(existingBench.experiences || []);
     }
@@ -85,6 +113,39 @@ export default function AddEditPage() {
 
   const handleChange = (field: string, value: string | number | boolean) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
+  };
+
+  /** 客流承载参数：按文本录入，允许临时为空，提交时统一校验 */
+  const handleCapacityChange = (
+    field: 'seats' | 'arrivalsPerHour' | 'avgStayMinutes' | 'maxQueue',
+    raw: string,
+  ) => {
+    setFormData((prev) => ({ ...prev, [field]: raw === '' ? '' : Number(raw) }));
+    setCapacityErrors((prev) => {
+      if (!prev[field]) return prev;
+      const next = { ...prev };
+      delete next[field];
+      return next;
+    });
+  };
+
+  const validateCapacity = (): boolean => {
+    const errors: Record<string, string> = {};
+    const { seats, arrivalsPerHour, avgStayMinutes, maxQueue } = formData;
+    if (typeof seats !== 'number' || !Number.isInteger(seats) || seats <= 0) {
+      errors.seats = '座位数必须为正整数，不能为零';
+    }
+    if (typeof arrivalsPerHour !== 'number' || arrivalsPerHour < 0) {
+      errors.arrivalsPerHour = '每小时到达人数不能为负';
+    }
+    if (typeof avgStayMinutes !== 'number' || avgStayMinutes <= 0) {
+      errors.avgStayMinutes = '平均停留分钟必须为正数';
+    }
+    if (typeof maxQueue !== 'number' || !Number.isInteger(maxQueue) || maxQueue < 0) {
+      errors.maxQueue = '等候上限必须为非负整数';
+    }
+    setCapacityErrors(errors);
+    return Object.keys(errors).length === 0;
   };
 
   const handleAddExperience = () => {
@@ -124,9 +185,20 @@ export default function AddEditPage() {
       alert('请输入位置描述');
       return;
     }
+    if (!validateCapacity()) {
+      return;
+    }
+
+    // 承载参数此时已校验为数字
+    const capacity = {
+      seats: formData.seats as number,
+      arrivalsPerHour: formData.arrivalsPerHour as number,
+      avgStayMinutes: formData.avgStayMinutes as number,
+      maxQueue: formData.maxQueue as number,
+    };
 
     if (isEdit && id) {
-      updateBench(id, formData);
+      updateBench(id, { ...formData, ...capacity });
       experiences.forEach((exp) => {
         const existingExp = existingBench?.experiences.find((e) => e.id === exp.id);
         if (existingExp) {
@@ -138,6 +210,7 @@ export default function AddEditPage() {
     } else {
       addBench({
         ...formData,
+        ...capacity,
       });
     }
 
@@ -351,6 +424,93 @@ export default function AddEditPage() {
           </div>
 
           <div className="paper-texture rounded-xl shadow-paper p-6 fade-in opacity-0 stagger-3">
+            <h2 className="font-serif text-lg font-semibold text-deep-brown mb-1">
+              客流承载参数
+            </h2>
+            <p className="text-xs text-ink-light mb-4">
+              登记到长椅档案，作为客流仿真的默认参数；仿真页仍可临时调整，不影响档案。
+            </p>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-deep-brown mb-1.5">
+                  座位数
+                </label>
+                <input
+                  type="number"
+                  min="1"
+                  step="1"
+                  value={formData.seats}
+                  onChange={(e) => handleCapacityChange('seats', e.target.value)}
+                  className={`w-full px-4 py-2.5 bg-white/50 border rounded-lg text-deep-brown focus:bg-white transition-colors ${
+                    capacityErrors.seats ? 'border-red-400' : 'border-deep-brown/10'
+                  }`}
+                />
+                {capacityErrors.seats && (
+                  <p className="text-xs text-red-500 mt-1">{capacityErrors.seats}</p>
+                )}
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-deep-brown mb-1.5">
+                  每小时到达人数
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  step="1"
+                  value={formData.arrivalsPerHour}
+                  onChange={(e) => handleCapacityChange('arrivalsPerHour', e.target.value)}
+                  className={`w-full px-4 py-2.5 bg-white/50 border rounded-lg text-deep-brown focus:bg-white transition-colors ${
+                    capacityErrors.arrivalsPerHour ? 'border-red-400' : 'border-deep-brown/10'
+                  }`}
+                />
+                {capacityErrors.arrivalsPerHour && (
+                  <p className="text-xs text-red-500 mt-1">{capacityErrors.arrivalsPerHour}</p>
+                )}
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-deep-brown mb-1.5">
+                  平均停留分钟
+                </label>
+                <input
+                  type="number"
+                  min="1"
+                  step="1"
+                  value={formData.avgStayMinutes}
+                  onChange={(e) => handleCapacityChange('avgStayMinutes', e.target.value)}
+                  className={`w-full px-4 py-2.5 bg-white/50 border rounded-lg text-deep-brown focus:bg-white transition-colors ${
+                    capacityErrors.avgStayMinutes ? 'border-red-400' : 'border-deep-brown/10'
+                  }`}
+                />
+                {capacityErrors.avgStayMinutes && (
+                  <p className="text-xs text-red-500 mt-1">{capacityErrors.avgStayMinutes}</p>
+                )}
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-deep-brown mb-1.5">
+                  等候上限（人）
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  step="1"
+                  value={formData.maxQueue}
+                  onChange={(e) => handleCapacityChange('maxQueue', e.target.value)}
+                  className={`w-full px-4 py-2.5 bg-white/50 border rounded-lg text-deep-brown focus:bg-white transition-colors ${
+                    capacityErrors.maxQueue ? 'border-red-400' : 'border-deep-brown/10'
+                  }`}
+                />
+                {capacityErrors.maxQueue && (
+                  <p className="text-xs text-red-500 mt-1">{capacityErrors.maxQueue}</p>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <div className="paper-texture rounded-xl shadow-paper p-6 fade-in opacity-0 stagger-4">
             <h2 className="font-serif text-lg font-semibold text-deep-brown mb-4">
               个人评价
             </h2>
@@ -382,7 +542,7 @@ export default function AddEditPage() {
             </div>
           </div>
 
-          <div className="paper-texture rounded-xl shadow-paper p-6 fade-in opacity-0 stagger-4">
+          <div className="paper-texture rounded-xl shadow-paper p-6 fade-in opacity-0 stagger-5">
             <div className="flex items-center justify-between mb-4">
               <h2 className="font-serif text-lg font-semibold text-deep-brown">
                 分时段体验

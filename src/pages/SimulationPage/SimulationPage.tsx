@@ -6,7 +6,7 @@ import { runSimulation } from '@/simulation/engine';
 import type { SimulationConfig, SimulationResult, ValidationErrors } from '@/simulation/types';
 import type { SavedPlan } from '@/utils/simStorage';
 import SimConfigForm from './SimConfigForm';
-import { defaultFormState, buildConfig, type SimFormState } from './simForm';
+import { defaultFormState, buildConfig, benchParamsFromArchive, type SimFormState } from './simForm';
 import SimResultView from './SimResultView';
 import PlanCompare from './PlanCompare';
 
@@ -32,21 +32,25 @@ export default function SimulationPage() {
     if (!plansInitialized) initPlans();
   }, [initialized, initialize, plansInitialized, initPlans]);
 
-  // 长椅列表就绪/变化后补全新增长椅的默认参数（保留已填值）
+  // 长椅列表就绪/变化后：新增长椅取档案登记默认值；已有的临时调整不被档案反向覆盖
   useEffect(() => {
     if (!initialized || benches.length === 0) return;
     setForm((prev) => {
-      const seedNum = prev && prev.seedText.trim() !== '' ? Number(prev.seedText) : 42;
-      const seed = Number.isFinite(seedNum) ? seedNum : 42;
       if (!prev) return defaultFormState(benches, { seed: 42 });
-      const merged = defaultFormState(benches, { seed });
+      const archiveDefaults = benchParamsFromArchive(benches);
       return {
         ...prev,
         seedText: prev.seedText.trim() === '' ? '42' : prev.seedText,
-        benchParams: { ...merged.benchParams, ...prev.benchParams },
+        benchParams: { ...archiveDefaults, ...prev.benchParams },
       };
     });
   }, [initialized, benches]);
+
+  // 放弃临时调整，全部恢复为档案登记值（不影响全局时间与种子）
+  const handleResetFromArchive = () => {
+    if (!form) return;
+    setForm({ ...form, benchParams: benchParamsFromArchive(benches) });
+  };
 
   const handleRun = () => {
     if (!form) return;
@@ -158,7 +162,13 @@ export default function SimulationPage() {
           </button>
           {showConfig && (
             <div className="paper-texture rounded-b-xl shadow-paper p-5">
-              <SimConfigForm benches={benches} form={form} onChange={setForm} errors={errors} />
+              <SimConfigForm
+                benches={benches}
+                form={form}
+                onChange={setForm}
+                errors={errors}
+                onResetArchive={handleResetFromArchive}
+              />
               {Object.keys(errors).length > 0 && (
                 <p className="mt-4 text-sm text-red-500">
                   存在 {Object.keys(errors).length} 处参数问题，请修正后再运行。

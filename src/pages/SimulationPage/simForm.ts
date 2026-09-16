@@ -1,4 +1,5 @@
 import type { Bench } from '@/types';
+import { DEFAULT_BENCH_CAPACITY } from '@/types';
 import type { SimBenchInput, SimulationConfig, ValidationErrors } from '@/simulation/types';
 import { validateConfig } from '@/simulation/engine';
 
@@ -18,6 +19,21 @@ export interface SimFormState {
   >;
 }
 
+/** 以长椅档案的登记值为仿真表单默认值（旧档案由 store 归一化后必有合法值） */
+export function benchParamsFromArchive(benches: Bench[]): SimFormState['benchParams'] {
+  return Object.fromEntries(
+    benches.map((b) => [
+      b.id,
+      {
+        seats: String(b.seats ?? DEFAULT_BENCH_CAPACITY.seats),
+        arrivalsPerHour: String(b.arrivalsPerHour ?? DEFAULT_BENCH_CAPACITY.arrivalsPerHour),
+        avgStayMinutes: String(b.avgStayMinutes ?? DEFAULT_BENCH_CAPACITY.avgStayMinutes),
+        maxQueue: String(b.maxQueue ?? DEFAULT_BENCH_CAPACITY.maxQueue),
+      },
+    ]),
+  );
+}
+
 export function defaultFormState(benches: Bench[], opts?: { seed?: number }): SimFormState {
   const seed = opts?.seed;
   return {
@@ -25,17 +41,7 @@ export function defaultFormState(benches: Bench[], opts?: { seed?: number }): Si
     startTime: '08:00',
     endTime: '10:00',
     seedText: seed !== undefined ? String(seed) : '',
-    benchParams: Object.fromEntries(
-      benches.map((b, i) => [
-        b.id,
-        {
-          seats: String(3 + (i % 3)),
-          arrivalsPerHour: String(10 + i * 4),
-          avgStayMinutes: '20',
-          maxQueue: '3',
-        },
-      ]),
-    ),
+    benchParams: benchParamsFromArchive(benches),
   };
 }
 

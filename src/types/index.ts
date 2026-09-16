@@ -28,9 +28,25 @@ export interface Bench {
   rating: number;
   review: string;
   experiences: BenchExperience[];
+  /** 仿真登记：座位数（正整数） */
+  seats: number;
+  /** 仿真登记：每小时到达人数（非负） */
+  arrivalsPerHour: number;
+  /** 仿真登记：平均停留分钟（正数） */
+  avgStayMinutes: number;
+  /** 仿真登记：满座时等候上限（非负整数） */
+  maxQueue: number;
   createdAt: string;
   updatedAt: string;
 }
+
+/** 旧档案缺少仿真字段时补的默认登记值 */
+export const DEFAULT_BENCH_CAPACITY = {
+  seats: 4,
+  arrivalsPerHour: 12,
+  avgStayMinutes: 20,
+  maxQueue: 3,
+} as const;
 
 export const MATERIAL_LABELS: Record<MaterialType, string> = {
   wood: '木质',

@@ -22,11 +22,13 @@ export default function SimConfigForm({
   form,
   onChange,
   errors,
+  onResetArchive,
 }: {
   benches: Bench[];
   form: SimFormState;
   onChange: (next: SimFormState) => void;
   errors: ValidationErrors;
+  onResetArchive?: () => void;
 }) {
   const setGlobal = (patch: Partial<SimFormState>) => onChange({ ...form, ...patch });
   const setBench = (benchId: string, patch: Partial<SimFormState['benchParams'][string]>) =>
@@ -95,8 +97,19 @@ export default function SimConfigForm({
           <h4 className="font-serif text-base font-semibold text-deep-brown">
             长椅参数
           </h4>
-          <span className="text-xs text-ink-light">
-            到达按泊松抽样，停留按指数分布抽样（分钟）
+          <span className="flex items-center gap-3">
+            <span className="text-xs text-ink-light">
+              默认取档案登记值，可临时调整；到达泊松、停留指数抽样（分钟）
+            </span>
+            {onResetArchive && (
+              <button
+                type="button"
+                onClick={onResetArchive}
+                className="text-xs text-moss-green hover:underline whitespace-nowrap"
+              >
+                恢复档案值
+              </button>
+            )}
           </span>
         </div>
         <div className="space-y-3">

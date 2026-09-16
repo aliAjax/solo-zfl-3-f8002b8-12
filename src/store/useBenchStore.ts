@@ -1,7 +1,8 @@
 import { create } from 'zustand';
 import type { Bench, BenchExperience, MaterialType, OrientationType, ShadeLevelType, NoiseLevelType } from '@/types';
-import { loadBenches, saveBenches } from '@/utils/storage';
+import { loadBenchesWithFlag, saveBenches } from '@/utils/storage';
 import { generateId } from '@/utils/comfort';
+import { normalizeBenches } from '@/utils/benchCapacity';
 import { mockBenches } from '@/data/mockBenches';
 
 interface BenchState {
@@ -46,12 +47,17 @@ export const useBenchStore = create<BenchState & BenchActions>((set, get) => ({
   ...initialState,
 
   initialize: () => {
-    const stored = loadBenches();
+    const { benches: stored, migrated } = loadBenchesWithFlag();
     if (stored.length > 0) {
       set({ benches: stored, initialized: true });
+      // 旧档案补过默认登记值后回写一次，刷新后仍在（仅新增字段）
+      if (migrated) {
+        saveBenches(stored);
+      }
     } else {
-      set({ benches: mockBenches, initialized: true });
-      saveBenches(mockBenches);
+      const seeded = normalizeBenches(mockBenches);
+      set({ benches: seeded, initialized: true });
+      saveBenches(seeded);
     }
   },
 

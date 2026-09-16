@@ -14,6 +14,10 @@ import {
   Sunset,
   Moon,
   CloudSun,
+  Users,
+  Hourglass,
+  ListOrdered,
+  Activity,
 } from 'lucide-react';
 import { useBenchStore } from '@/store/useBenchStore';
 import {
@@ -165,7 +169,7 @@ export default function BenchDetail() {
                 </div>
               </div>
 
-              <div className="flex items-center gap-6 mb-6 p-4 bg-warm-cream/50 rounded-lg">
+              <div className="flex items-center gap-6 mb-6 p-4 bg-warm-cream/50 rounded-lg flex-wrap">
                 <div className="flex items-center gap-3">
                   <span className="text-sm text-ink-light">材质</span>
                   <span className="text-sm font-medium text-deep-brown">
@@ -178,6 +182,49 @@ export default function BenchDetail() {
                   <span className="text-sm font-medium text-deep-brown">
                     {STAY_DURATION_LABELS[bench.stayDuration]}
                   </span>
+                </div>
+              </div>
+
+              <div className="mb-6">
+                <h3 className="font-serif font-semibold text-deep-brown mb-3">
+                  客流承载登记
+                </h3>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  <div className="text-center p-3 bg-moss-green/5 rounded-lg">
+                    <Armchair className="w-5 h-5 text-moss-green mx-auto mb-1" />
+                    <div className="text-xs text-ink-light mb-0.5">座位数</div>
+                    <div className="text-sm font-medium text-deep-brown">{bench.seats}</div>
+                  </div>
+                  <div className="text-center p-3 bg-ochre/5 rounded-lg">
+                    <Users className="w-5 h-5 text-ochre mx-auto mb-1" />
+                    <div className="text-xs text-ink-light mb-0.5">每小时到达</div>
+                    <div className="text-sm font-medium text-deep-brown">
+                      {bench.arrivalsPerHour} 人
+                    </div>
+                  </div>
+                  <div className="text-center p-3 bg-moss-green/5 rounded-lg">
+                    <Hourglass className="w-5 h-5 text-moss-green mx-auto mb-1" />
+                    <div className="text-xs text-ink-light mb-0.5">平均停留</div>
+                    <div className="text-sm font-medium text-deep-brown">
+                      {bench.avgStayMinutes} 分钟
+                    </div>
+                  </div>
+                  <div className="text-center p-3 bg-ochre/5 rounded-lg">
+                    <ListOrdered className="w-5 h-5 text-ochre mx-auto mb-1" />
+                    <div className="text-xs text-ink-light mb-0.5">等候上限</div>
+                    <div className="text-sm font-medium text-deep-brown">
+                      {bench.maxQueue} 人
+                    </div>
+                  </div>
+                </div>
+                <div className="mt-3 flex items-center gap-2">
+                  <Activity className="w-3.5 h-3.5 text-moss-green" />
+                  <button
+                    onClick={() => navigate('/simulation')}
+                    className="text-xs text-moss-green hover:underline"
+                  >
+                    前往客流承载仿真 →
+                  </button>
                 </div>
               </div>
 
